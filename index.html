@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>群rbq列表</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 0;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        img {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .login-container,
+        .table-container,
+        .avatar-container {
+            max-width: 400px;
+            width: 80%;
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            z-index: 1;
+            position: relative;
+            margin-top: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+            border-radius: 20px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background-color: #4caf50;
+            color: #fff;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        #welcomeContainer {
+            display: none;
+        }
+
+        #welcomeMessage {
+            color: #fff;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        #avatarContainer {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        #avatarContainer img {
+            width: 100px; /* Adjust the width as needed */
+            border-radius: 50%;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<img src="1.jpeg" alt="Background Image">
+
+<div class="container">
+
+    <div id="loginContainer" class="login-container">
+        <h2>rbq提交</h2>
+        <form id="loginForm">
+            <label for="uid">输入你认为的群rbq的QQ号:</label>
+            <input type="text" id="uid" name="uid" required>
+
+            <label for="username">你的昵称:</label>
+            <input type="text" id="username" name="username" required>
+
+            <button type="button" onclick="submitForm()">提交</button>
+        </form>
+    </div>
+
+    <div id="tableContainer" class="table-container">
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>UID</th>
+                    <th>Username</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div id="avatarContainer" class="avatar-container"></div>
+
+    <div id="welcomeContainer">
+        <p id="welcomeMessage">感谢您的提交，现在群里又多了一名rbq呢</p>
+        <button onclick="logout()">重新提交</button>
+    </div>
+
+</div>
+
+<script>
+    // Function to fetch avatars and display them
+    function fetchAvatars() {
+        const avatarContainer = document.getElementById('avatarContainer');
+        const tableBody = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
+
+        // Get all UIDs from the table
+        const uids = Array.from(tableBody.getElementsByTagName('tr')).map(row => row.cells[0].textContent);
+
+        // Use Promise.all to wait for all avatar fetch requests
+        Promise.all(uids.map(uid => fetchAvatar(uid)))
+            .then(avatars => {
+                avatarContainer.innerHTML = ''; // Clear previous avatars
+                avatars.forEach(avatar => {
+                    avatarContainer.appendChild(avatar);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching avatars:', error);
+            });
+    }
+
+    // Function to fetch a single avatar
+    function fetchAvatar(uid) {
+        return new Promise((resolve, reject) => {
+            const avatarImage = new Image();
+            avatarImage.onload = () => resolve(avatarImage);
+            avatarImage.onerror = reject;
+            avatarImage.src = `https://q1.qlogo.cn/g?b=qq&nk=${uid}&s=100`;
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Function to fetch data and populate the table
+        async function fetchDataAndPopulateTable() {
+            try {
+                const response = await fetch('http://123.249.82.206:3003/data');
+                const data = await response.json();
+
+                populateTable(data);
+                fetchAvatars(); // Fetch and display avatars after populating the table
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // Function to populate the table with data
+        function populateTable(data) {
+            const tableBody = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
+
+            data.forEach(entry => {
+                const row = tableBody.insertRow();
+                const cell1 = row.insertCell(0);
+                const cell2 = row.insertCell(1);
+
+                cell1.textContent = entry.uid;
+                cell2.textContent = entry.username;
+            });
+        }
+
+        // Call the function to fetch data and populate the table
+        fetchDataAndPopulateTable();
+    });
+
+    function submitForm() {
+        const uid = document.getElementById('uid').value;
+        const username = document.getElementById('username').value;
+
+        fetch('http://123.249.82.206:3002/submit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ uid, username }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('数据提交成功！');
+                    document.getElementById('loginContainer').style.display = 'none';
+                    document.getElementById('welcomeContainer').style.display = 'block';
+                    fetchAvatars(); // Fetch and display avatars after submitting the form
+                } else {
+                    alert('数据提交失败，可能是后端服务器发生错误。');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('数据提交失败，可能是后端服务器发生错误。');
+            });
+    }
+
+    function logout() {
+        document.getElementById('welcomeContainer').style.display = 'none';
+        document.getElementById('loginContainer').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
